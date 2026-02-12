@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Valentine?</title>
+  <style>
+    * { box-sizing: border-box; }
+    body{
+      margin:0;
+      min-height:100vh;
+      display:grid;
+      place-items:center;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(circle at top, #ffe3ee, #fff);
+      overflow:hidden;
+      padding:24px;
+    }
+    .card{
+      width:min(820px, 94vw);
+      background:#fff;
+      border:2px solid #111;
+      border-radius:22px;
+      padding:28px 22px;
+      box-shadow:0 18px 50px rgba(0,0,0,.12);
+      text-align:center;
+      position:relative;
+      z-index:2;
+    }
+    h1{
+      margin:0 0 14px;
+      font-size: clamp(20px, 3.2vw, 30px);
+      line-height:1.25;
+    }
+    .sub{
+      margin:0 0 18px;
+      opacity:.75;
+      font-weight:600;
+    }
+    .btns{
+      display:flex;
+      gap:12px;
+      justify-content:center;
+      flex-wrap:wrap;
+      margin-top:10px;
+    }
+    button{
+      border:2px solid #111;
+      background:#111;
+      color:#fff;
+      padding:12px 16px;
+      border-radius:14px;
+      font-weight:900;
+      cursor:pointer;
+      transition: transform .08s ease;
+      user-select:none;
+      font-size:16px;
+    }
+    button:active{ transform:scale(.98); }
+    #yes2{ background:#fff; color:#111; }
+    #no{
+      background:#fff;
+      color:#111;
+      position:relative;
+    }
+    #noHint{
+      margin-top:14px;
+      min-height:24px;
+      font-weight:900;
+      letter-spacing:.2px;
+    }
+
+    /* Big thank you overlay */
+    #thankyou{
+      position:fixed;
+      inset:0;
+      display:none;
+      place-items:center;
+      z-index:5;
+      background: rgba(255,255,255,.7);
+      backdrop-filter: blur(4px);
+      text-align:center;
+      padding:24px;
+    }
+    #thankyou .big{
+      font-size: clamp(40px, 7vw, 86px);
+      font-weight:1000;
+      line-height:1.0;
+      margin:0;
+    }
+    #thankyou .small{
+      margin-top:10px;
+      font-weight:800;
+      opacity:.8;
+    }
+
+    /* Confetti canvas */
+    canvas#confetti{
+      position:fixed;
+      inset:0;
+      width:100%;
+      height:100%;
+      pointer-events:none;
+      z-index:4;
+      display:none;
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="confetti"></canvas>
+
+  <div class="card">
+    <h1>
+      Hi babe, I love you and i want to be your valentine for ever. You are literally the best thing that happened to me.
+      Will you be my valentine please ????? ❤️❤️❤️
+    </h1>
+    <p class="sub">Choose one. (One option is… emotionally unavailable.)</p>
+
+    <div class="btns">
+      <button id="yes1">Yes</button>
+      <button id="yes2">Definitely yes</button>
+      <button id="no">No</button>
+    </div>
+
+    <div id="noHint"></div>
+  </div>
+
+  <div id="thankyou">
+    <div>
+      <p class="big">THANK YOU!!!!</p>
+      <div class="small">🎉 Best decision ever 🎉</div>
+    </div>
+  </div>
+
+  <script>
+    const noBtn = document.getElementById("no");
+    const hint = document.getElementById("noHint");
+    const yes1 = document.getElementById("yes1");
+    const yes2 = document.getElementById("yes2");
+    const overlay = document.getElementById("thankyou");
+    const canvas = document.getElementById("confetti");
+    const ctx = canvas.getContext("2d");
+
+    // Messages that appear when he tries to click "No"
+    const noMessages = ["pleaseee", "try again", "I will cry"];
+    let noMsgIndex = 0;
+
+    function setHint(text){
+      hint.textContent = text;
+    }
+
+    function moveNoButton(){
+      // Cycle the message
+      setHint(noMessages[noMsgIndex % noMessages.length]);
+      noMsgIndex++;
+
+      // Make the "No" button run away but stay inside the viewport
+      const pad = 16;
+      const rect = noBtn.getBoundingClientRect();
+      const maxX = window.innerWidth - rect.width - pad;
+      const maxY = window.innerHeight - rect.height - pad;
+
+      const x = Math.max(pad, Math.random() * maxX);
+      const y = Math.max(pad, Math.random() * maxY);
+
+      noBtn.style.position = "fixed";
+      noBtn.style.left = `${x}px`;
+      noBtn.style.top = `${y}px`;
+    }
+
+    // Make "No" dodge hover/click/touch
+    noBtn.addEventListener("mouseenter", moveNoButton);
+    noBtn.addEventListener("mouseover", moveNoButton);
+    noBtn.addEventListener("click", (e) => { e.preventDefault(); moveNoButton(); });
+
+    // Mobile touch support
+    noBtn.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      moveNoButton();
+    }, { passive:false });
+
+    // Confetti (simple canvas particles)
+    let confettiPieces = [];
+    let confettiRunning = false;
+
+    function resizeCanvas(){
+      canvas.width = window.innerWidth * devicePixelRatio;
+      canvas.height = window.innerHeight * devicePixelRatio;
+      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    }
+
+    function makeConfetti(count = 180){
+      confettiPieces = Array.from({length: count}, () => ({
+        x: Math.random() * window.innerWidth,
+        y: -20 - Math.random() * window.innerHeight * 0.2,
+        r: 4 + Math.random() * 6,
+        vx: -2 + Math.random() * 4,
+        vy: 3 + Math.random() * 5,
+        rot: Math.random() * Math.PI,
+        vr: -0.2 + Math.random() * 0.4,
+        // random bright-ish colors without hardcoding a palette
+        color: `hsl(${Math.floor(Math.random()*360)}, 90%, 60%)`
+      }));
+    }
+
+    function drawConfetti(){
+      ctx.clearRect(0,0,window.innerWidth, window.innerHeight);
+
+      for (const p of confettiPieces){
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.vr;
+        p.vy += 0.02; // gravity
+
+        // wrap horizontally
+        if (p.x < -30) p.x = window.innerWidth + 30;
+        if (p.x > window.innerWidth + 30) p.x = -30;
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.r, -p.r * 0.6, p.r * 2, p.r * 1.2);
+        ctx.restore();
+      }
+
+      // stop when most pieces are off screen
+      const stillOnScreen = confettiPieces.some(p => p.y < window.innerHeight + 60);
+      if (stillOnScreen && confettiRunning){
+        requestAnimationFrame(drawConfetti);
+      } else {
+        confettiRunning = false;
+        canvas.style.display = "none";
+      }
+    }
+
+    function celebrate(){
+      // show big THANK YOU overlay
+      overlay.style.display = "grid";
+
+      // confetti
+      resizeCanvas();
+      canvas.style.display = "block";
+      makeConfetti(220);
+      confettiRunning = true;
+      drawConfetti();
+
+      // optional: lock buttons so he can’t spam
+      yes1.disabled = true;
+      yes2.disabled = true;
+      noBtn.disabled = true;
+
+      setHint(""); // clear the begging text 😌
+    }
+
+    yes1.addEventListener("click", celebrate);
+    yes2.addEventListener("click", celebrate);
+
+    window.addEventListener("resize", () => {
+      if (canvas.style.display === "block") resizeCanvas();
+    });
+  </script>
+</body>
+</html>
